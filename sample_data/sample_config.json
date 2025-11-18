@@ -1,0 +1,22 @@
+{
+    "task_config": {
+        "task_name": "formula_task",
+        "base_instruction": "Generate answer for a given question.",
+        "eval_metric": "exact_match",
+        "data_config": [
+            {
+                "name": "question",
+                "type": "input",
+                "description": "The question"
+            },
+            {
+                "name": "target",
+                "type": "output",
+                "description": "The expected answer"
+            }
+        ]
+    },
+    "train_data": "./sample_data/formula_train_subset_500.jsonl",
+    "val_data": "./sample_data/formula_val_subset_300.jsonl",
+    "test_data": "./sample_data/formula_test.jsonl"
+}
