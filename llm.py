@@ -75,7 +75,11 @@ def timed_llm_call(client, api_provider, model, prompt, role, call_id, max_token
             if use_json_mode:
                 api_params["response_format"] = {"type": "json_object"}
             call_start = time.time()
-            response = active_client.chat.completions.create(**api_params)
+            try:
+                response = active_client.chat.completions.create(**api_params)
+            except Exception as e:
+                print(prompt)
+                raise e
             call_end = time.time()
             
             # Check if response is valid

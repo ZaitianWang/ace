@@ -29,16 +29,19 @@ def parse_args():
                              "'eval_only' for testing only with provided playbook")
     
     # Model configuration
-    parser.add_argument("--api_provider", type=str, default="sambanova",
-                        choices=["sambanova", "together", "openai"], help="API provider")
+    parser.add_argument("--api_provider", type=str, default="aliyun",
+                        choices=["sambanova", "together", "openai", "aliyun"], help="API provider")
     parser.add_argument("--generator_model", type=str, 
-                        default="DeepSeek-V3.1",
+                        # default="Meta-Llama-3.1-8B-Instruct",
+                        default="qwen-flash",
                         help="Model for generator")
     parser.add_argument("--reflector_model", type=str,
-                        default="DeepSeek-V3.1",
+                        # default="Meta-Llama-3.1-8B-Instruct",
+                        default="qwen-flash",
                         help="Model for reflector")
     parser.add_argument("--curator_model", type=str,
-                        default="DeepSeek-V3.1",
+                        # default="Meta-Llama-3.1-8B-Instruct",
+                        default="qwen-flash",
                         help="Model for curator")
     
     # Training configuration
@@ -185,6 +188,9 @@ def main():
         task_config[args.task_name],
         args.mode
     )
+    train_samples = train_samples[:500] if train_samples else None
+    val_samples = val_samples[:300] if val_samples else None
+    test_samples = test_samples[:200] if test_samples else None
         
     # Load initial playbook (or use empty if None provided)
     initial_playbook = load_initial_playbook(args.initial_playbook_path)

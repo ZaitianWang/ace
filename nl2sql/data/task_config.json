@@ -1,0 +1,7 @@
+{
+    "bird": {
+        "train_data": "./nl2sql/data/bird_train_700.jsonl",
+        "val_data": "./nl2sql/data/bird_val_300.jsonl",
+        "test_data": "./nl2sql/data/bird_test_534.jsonl"
+    }
+}

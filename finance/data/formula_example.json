@@ -1,0 +1,4 @@
+{
+  "context": "Use formula Treynor Ratio to answer the question. Answer with a numerical answer with 2 decimal places and with no explanations or other text. Formula: Treynor Ratio = (R_p - R_f) / β_p, Explanation: R_p: Return of the portfolio, R_f: Risk-free rate, β_p: Beta of the portfolio. Question:  \"Determine the Treynor Ratio of a balanced fund yielding an 8% return with a beta of 1 and a current risk-free rate at 2%.\". Answer:",
+  "target": "0.06"
+}
