@@ -161,6 +161,24 @@ python -m finance.run \
     --num_epochs 3 \
     --eval_steps 100 \
     --max_tokens 4096
+
+python -m nl2sql.run \
+    --task_name bird \
+    --mode offline \
+    --save_path results \
+    --initial_playbook_path results/ace_run_20260112_112919_bird_offline/intermediate_playbooks/epoch_1_step_200_playbook.txt
+
+python -m nl2sql.run \
+    --task_name bird \
+    --mode online \
+    --save_path results
+
+python -m nl2sql.run \
+    --task_name bird \
+    --mode eval_only \
+    --initial_playbook_path results/ace_run_20251229_161044_bird_online/intermediate_playbooks/window_11_final_playbook.txt \
+    --save_path results
+
 ```
 
 #### Available Arguments

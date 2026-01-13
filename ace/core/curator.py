@@ -44,7 +44,7 @@ class Curator:
         use_ground_truth: bool = True,
         use_json_mode: bool = False,
         call_id: str = "curate",
-        log_dir: Optional[str] = None,
+        log_dir: str = "",
         next_global_id: int = 1
     ) -> Tuple[str, int, List[Dict[str, Any]], Dict[str, Any]]:
         """

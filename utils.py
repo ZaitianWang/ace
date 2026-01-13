@@ -31,6 +31,12 @@ def initialize_clients(api_provider):
         api_key = os.getenv('OPENAI_API_KEY', '')
         if not api_key:
             raise ValueError("OpenAI api key not found in environment variables")
+    elif api_provider == "aliyun":
+        # Use Aliyun API
+        base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        api_key = os.getenv('ALIYUN_API_KEY', '')
+        if not api_key:
+            raise ValueError("Aliyun api key not found in environment variables")
     else:
         raise ValueError((f"Invalid api_provider name: {api_provider}. Must be 'sambanova', 'together', or 'openai'"))
         

@@ -12,19 +12,28 @@ from utils import get_section_slug
 
 def parse_playbook_line(line):
     """Parse a single playbook line to extract components"""
-    # Pattern: [id] helpful=X harmful=Y :: content
-    pattern = r'\[([^\]]+)\]\s*helpful=(\d+)\s*harmful=(\d+)\s*::\s*(.*)'
-    match = re.match(pattern, line.strip())
-    
-    if match:
-        return {
-            'id': match.group(1),
-            'helpful': int(match.group(2)),
-            'harmful': int(match.group(3)),
-            'content': match.group(4),
-            'raw_line': line
-        }
-    return None
+    # Pattern: one or more prefix blocks like "[id] helpful=X harmful=Y ::"
+    pattern = r'\[([^\]]+)\]\s*helpful=(\d+)\s*harmful=(\d+)\s*::'
+    matches = list(re.finditer(pattern, line))
+
+    if not matches:
+        return None
+
+    total_helpful = sum(int(m.group(2)) for m in matches)
+    total_harmful = sum(int(m.group(3)) for m in matches)
+    first_id = matches[0].group(1)
+
+    # Content starts after the last prefix block
+    content_start = matches[-1].end()
+    content = line[content_start:].strip()
+
+    return {
+        'id': first_id,
+        'helpful': total_helpful,
+        'harmful': total_harmful,
+        'content': content,
+        'raw_line': line
+    }
 
 def get_next_global_id(playbook_text):
     """Extract highest global ID and return next one"""
@@ -96,12 +105,10 @@ def update_bullet_counts(playbook_text, bullet_tags):
 def apply_curator_operations(playbook_text, operations, next_id):
     """
     Apply curator operations to playbook
-    
-    TODO: Future Operations (not implemented yet)
-    - UPDATE: Rewrite existing bullets to be more accurate or comprehensive
-    - MERGE: Combine related bullets into stronger ones  
+
+    Supported operations: ADD, UPDATE, MERGE, DELETE.
+    TODO: Future Operations
     - CREATE_META: Add high-level strategy sections
-    - DELETE: Remove outdated or incorrect bullets (if needed)
     """
     lines = playbook_text.strip().split('\n')
     
@@ -109,6 +116,7 @@ def apply_curator_operations(playbook_text, operations, next_id):
     sections = {}
     current_section = "general"
     section_line_map = {}  # Track which line each section header is on
+    bullet_lookup = {}
     
     for i, line in enumerate(lines):
         if line.strip().startswith('##'):
@@ -120,22 +128,25 @@ def apply_curator_operations(playbook_text, operations, next_id):
                 sections[current_section] = []
         elif line.strip():
             sections[current_section].append((i, line))
+            parsed_line = parse_playbook_line(line)
+            if parsed_line:
+                bullet_lookup[parsed_line['id']] = {
+                    'section': current_section,
+                    'helpful': parsed_line['helpful'],
+                    'harmful': parsed_line['harmful'],
+                    'content': parsed_line['content'],
+                    'raw_line': line
+                }
     
     # Process operations
     bullets_to_add = []
+    bullets_to_update = {}
+    bullets_to_delete = set()
     
     for op in operations:
         op_type = op['type']
         
         # TODO: Future operation types (not implemented yet)
-        # elif op_type == 'UPDATE':
-        #     bullet_id = op.get('bullet_id', '')
-                    #     new_content = op.get('content', '')
-            #     bullets_to_update[bullet_id] = new_content
-        # elif op_type == 'MERGE':
-        #     source_ids = op.get('source_ids', [])
-        #     bullets_to_delete.update(source_ids)
-        #     # Add merged bullet logic here
         # elif op_type == 'CREATE_META':
         #     section_name = op.get('section_name', 'META_STRATEGIES')
         #     # Add meta section creation logic here
@@ -160,14 +171,97 @@ def apply_curator_operations(playbook_text, operations, next_id):
             bullets_to_add.append((section, new_line))
             print(f"  Added bullet {new_id} to section {section}")
             
+        elif op_type == 'UPDATE':
+            bullet_id = op.get('bullet_id') or op.get('id') or ''
+            new_content = op.get('content', '').strip()
 
+            if not bullet_id:
+                print("Warning: UPDATE operation missing bullet_id, skipping")
+                continue
+            if bullet_id not in bullet_lookup:
+                print(f"Warning: UPDATE target '{bullet_id}' not found, skipping")
+                continue
+
+            if not new_content:
+                new_content = bullet_lookup[bullet_id]['content']
+
+            bullets_to_update[bullet_id] = new_content
+            print(f"  Updated bullet {bullet_id}")
+
+        elif op_type == 'MERGE':
+            source_ids = op.get('source_ids') or op.get('bullet_ids') or []
+            if isinstance(source_ids, str):
+                source_ids = [source_ids]
+
+            valid_sources = []
+            for source_id in source_ids:
+                if source_id in bullet_lookup:
+                    valid_sources.append(source_id)
+                else:
+                    print(f"Warning: MERGE source '{source_id}' not found, skipping")
+
+            if not valid_sources:
+                continue
+
+            bullets_to_delete.update(valid_sources)
+
+            section_raw = op.get('section') or bullet_lookup[valid_sources[0]]['section']
+            section = section_raw.lower().replace(' ', '_').replace('&', 'and') if section_raw else 'general'
+
+            if section not in sections and section != 'general':
+                print(f"Warning: Section '{section_raw}' not found, adding merged bullet to OTHERS")
+                section = 'others'
+
+            merged_helpful = sum(bullet_lookup[src]['helpful'] for src in valid_sources)
+            merged_harmful = sum(bullet_lookup[src]['harmful'] for src in valid_sources)
+
+            content = op.get('content', '').strip()
+            if not content:
+                merged_contents = [bullet_lookup[src]['content'] for src in valid_sources]
+                content = " / ".join(merged_contents)
+
+            slug = get_section_slug(section)
+            new_id = f"{slug}-{next_id:05d}"
+            next_id += 1
+
+            new_line = format_playbook_line(new_id, merged_helpful, merged_harmful, content)
+            bullets_to_add.append((section, new_line))
+            print(f"  Merged {', '.join(valid_sources)} into {new_id} in section {section}")
+
+        elif op_type == 'DELETE':
+            delete_ids = op.get('bullet_ids') or [op.get('bullet_id')]
+            if isinstance(delete_ids, str):
+                delete_ids = [delete_ids]
+
+            for delete_id in delete_ids:
+                if not delete_id:
+                    continue
+                if delete_id not in bullet_lookup:
+                    print(f"Warning: DELETE target '{delete_id}' not found, skipping")
+                    continue
+                bullets_to_delete.add(delete_id)
+                print(f"  Deleted bullet {delete_id}")
     
     # Rebuild playbook
     new_lines = []
     for line in lines:
         parsed = parse_playbook_line(line)
         if parsed:
-            new_lines.append(line)
+            bullet_id = parsed['id']
+
+            if bullet_id in bullets_to_delete:
+                continue
+
+            if bullet_id in bullets_to_update:
+                updated_line = format_playbook_line(
+                    bullet_id,
+                    parsed['helpful'],
+                    parsed['harmful'],
+                    bullets_to_update[bullet_id]
+                )
+                new_lines.append(updated_line)
+            else:
+                new_lines.append(line)
         else:
             new_lines.append(line)
     

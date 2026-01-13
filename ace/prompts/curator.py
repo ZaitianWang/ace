@@ -17,8 +17,10 @@ CURATOR_PROMPT = """You are a master curator of knowledge. Your job is to identi
 - Avoid redundancy - if similar advice already exists, only add new content that is a perfect complement to the existing playbook
 - Do NOT regenerate the entire playbook - only provide the additions needed
 - Focus on quality over quantity - a focused, well-organized playbook is better than an exhaustive one
+- **You MUST NOT instruct downstream agents to look at ground truth; they will not have access to it during generation! Remember this!**
 - Format your response as a PURE JSON object with specific sections
 - For any operation if no new content to add, return an empty list for the operations field
+- Provide a brief reason for each operation and content choice
 - Be concise and specific - each addition should be actionable
 
 
@@ -41,24 +43,30 @@ CURATOR_PROMPT = """You are a master curator of knowledge. Your job is to identi
 **Your Task:**
 Output ONLY a valid JSON object with these exact fields:
 - reasoning: your chain of thought / reasoning / thinking process, detailed analysis and calculations
-- operations: a list of operations to be performed on the playbook
-  - type: the type of operation to be performed
-  - section: the section to add the bullet to
-  - content: the new content of the bullet
+- operations: a list of operations to be performed on the playbook (can be empty)
+  - type: one of ADD | UPDATE | MERGE | DELETE
+  - reason: short justification for why this operation/content is needed
+  - Fields per type:
+    - ADD: section, content
+    - UPDATE: bullet_id (or id), content (if omitted, keep existing content)
+    - MERGE: source_ids (or bullet_ids; list or string), section (optional, defaults to first source section), content (optional)
+    - DELETE: bullet_ids (list) or bullet_id (string)
 
 **Available Operations:**
 1. ADD: Create new bullet points with fresh IDs
-    - section: the section to add the new bullet to
-    - content: the new content of the bullet. Note: no need to include the bullet_id in the content like '[ctx-00263] helpful=1 harmful=0 ::', the bullet_id will be added by the system.
+2. UPDATE: Rewrite an existing bullet's content
+3. MERGE: Combine multiple bullets into one new bullet (merges helpful/harmful counts); merged sources will be deleted
+4. DELETE: Remove outdated or incorrect bullets
 
 **RESPONSE FORMAT - Output ONLY this JSON structure (no markdown, no code blocks):**
 {{
   "reasoning": "[Your chain of thought / reasoning / thinking process, detailed analysis and calculations here]",
   "operations": [
     {{
-      "type": "ADD", 
+      "type": "ADD",
       "section": "formulas_and_calculations",
-      "content": "[New calculation method...]"
+      "content": "[New calculation method...]",
+      "reason": "[Why this addition helps]"
     }}
   ]
 }}
@@ -82,6 +90,7 @@ CURATOR_PROMPT_NO_GT = """You are a master curator of knowledge. Your job is to 
 - Focus on quality over quantity - a focused, well-organized playbook is better than an exhaustive one
 - Format your response as a PURE JSON object with specific sections
 - For any operation if no new content to add, return an empty list for the operations field
+- Provide a brief reason for each operation and content choice
 - Be concise and specific - each addition should be actionable
 
 
@@ -104,24 +113,30 @@ CURATOR_PROMPT_NO_GT = """You are a master curator of knowledge. Your job is to 
 **Your Task:**
 Output ONLY a valid JSON object with these exact fields:
 - reasoning: your chain of thought / reasoning / thinking process, detailed analysis and calculations
-- operations: a list of operations to be performed on the playbook
-  - type: the type of operation to be performed
-  - section: the section to add the bullet to
-  - content: the new content of the bullet
+- operations: a list of operations to be performed on the playbook (can be empty)
+  - type: one of ADD | UPDATE | MERGE | DELETE
+  - reason: short justification for why this operation/content is needed
+  - Fields per type:
+    - ADD: section, content
+    - UPDATE: bullet_id (or id), content (if omitted, keep existing content)
+    - MERGE: source_ids (or bullet_ids; list or string), section (optional, defaults to first source section), content (optional)
+    - DELETE: bullet_ids (list) or bullet_id (string)
 
 **Available Operations:**
 1. ADD: Create new bullet points with fresh IDs
-    - section: the section to add the new bullet to
-    - content: the new content of the bullet. Note: no need to include the bullet_id in the content like '[ctx-00263] helpful=1 harmful=0 ::', the bullet_id will be added by the system.
+2. UPDATE: Rewrite an existing bullet's content
+3. MERGE: Combine multiple bullets into one new bullet (merges helpful/harmful counts); merged sources will be deleted
+4. DELETE: Remove outdated or incorrect bullets
 
 **RESPONSE FORMAT - Output ONLY this JSON structure (no markdown, no code blocks):**
 {{
   "reasoning": "[Your chain of thought / reasoning / thinking process, detailed analysis and calculations here]",
   "operations": [
     {{
-      "type": "ADD", 
+      "type": "ADD",
       "section": "formulas_and_calculations",
-      "content": "[New calculation method...]"
+      "content": "[New calculation method...]",
+      "reason": "[Why this addition helps]"
     }}
   ]
 }}
